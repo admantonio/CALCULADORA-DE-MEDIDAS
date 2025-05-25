@@ -126,8 +126,7 @@
         }
         #relatorioVisualParaImagem {
             background-color: #1f2937; /* Cor de fundo (slate-800) para a imagem */
-            /* Padding adicionado para que a imagem não corte as bordas do conteúdo interno */
-            padding-bottom: 1.5rem; /* Equivalente a p-6, para garantir que os botões não sobreponham o conteúdo se não forem escondidos a tempo */
+            padding-bottom: 1.5rem; 
         }
         .botoes-acao-relatorio {
             /* Esta classe será usada para agrupar os botões que queremos esconder */
@@ -144,8 +143,8 @@
             </header>
 
             <div class="mb-4">
-                <label class="block text-xs font-medium text-slate-400">ID do Usuário (para fins de demonstração):</label>
-                <p id="userIdDisplay" class="text-xs text-sky-300 break-all">Carregando...</p>
+                <label class="block text-xs font-medium text-slate-400">ID do Usuário (Firebase):</label>
+                <p id="userIdDisplay" class="text-xs text-sky-300 break-all">Autenticando...</p>
             </div>
 
             <div class="mb-6">
@@ -210,7 +209,8 @@
                 <p class="text-slate-400 text-center" id="loadingHistorico">Carregando histórico...</p>
                 </div>
 
-            <div class="border-t border-slate-700 pt-6" id="secaoTotaisGerais"> <h3 class="text-xl font-semibold text-sky-400 mb-3 text-center">Totais Gerais</h3>
+            <div class="border-t border-slate-700 pt-6" id="secaoTotaisGerais"> 
+                <h3 class="text-xl font-semibold text-sky-400 mb-3 text-center">Totais Gerais</h3>
                 <div class="space-y-2 text-lg">
                     <div class="flex justify-between">
                         <span class="text-slate-300">Quantidade de Tapetes:</span>
@@ -245,39 +245,49 @@
 
     <div id="messageModal" class="modal">
         <div class="modal-content">
-            <p id="modalMessageText" class="text-lg mb-4"></p>
+            <p id="modalMessageText" class="text-lg mb-4 whitespace-pre-wrap"></p>
             <button id="modalCloseBtn" class="modal-close-button">OK</button>
         </div>
     </div>
 
     <script type="module">
-        // Configuração do Firebase (substitua com os seus dados se não fornecidos pelo ambiente)
-        const firebaseConfigFromEnv = typeof __firebase_config !== 'undefined' ? __firebase_config : null;
-        const appIdFromEnv = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id-calculadora-tapetes';
-        const initialAuthTokenFromEnv = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-
-        const defaultConfig = { // Fallback se variáveis de ambiente não estiverem disponíveis
-            apiKey: "YOUR_API_KEY", authDomain: "YOUR_AUTH_DOMAIN", projectId: "YOUR_PROJECT_ID",
-            storageBucket: "YOUR_STORAGE_BUCKET", messagingSenderId: "YOUR_MESSAGING_SENDER_ID", appId: "YOUR_APP_ID"
+        // Your web app's Firebase configuration (AS PROVIDED BY THE USER)
+        const firebaseConfig = {
+            apiKey: "AIzaSyDF-TSSuB2U7ufne5XZqzYoxfv5CFUzbKs",
+            authDomain: "calculado-de-medidas.firebaseapp.com",
+            projectId: "calculado-de-medidas",
+            storageBucket: "calculado-de-medidas.firebasestorage.app",
+            messagingSenderId: "659371120644",
+            appId: "1:659371120644:web:124e991745c4094030bd51",
+            measurementId: "G-0R44WQFQFQ"
         };
-        
-        const firebaseConfig = firebaseConfigFromEnv ? JSON.parse(firebaseConfigFromEnv) : defaultConfig;
-        const appId = appIdFromEnv;
 
-        // Importações do Firebase
-        import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-        import { getFirestore, collection, addDoc, onSnapshot, query, serverTimestamp, writeBatch, getDocs } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+        // Path for Firestore collection (using a fixed name for this app to keep user data organized)
+        const NOME_DA_APP_PARA_COLECAO = 'minha-calculadora-tapetes-v1';
+
+        // Importações do Firebase (using version 11.8.1 as provided by user's snippet)
+        import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-auth.js"; // signInWithCustomToken removed as it's not used with this config.
+        import { getFirestore, collection, addDoc, onSnapshot, query, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-firestore.js"; // writeBatch, getDocs removed as 'limparHistorico' is local for now.
+        import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-analytics.js";
         
         let app;
-        if (!getApps().length) { app = initializeApp(firebaseConfig); } else { app = getApp(); }
+        if (!getApps().length) { 
+            app = initializeApp(firebaseConfig); 
+        } else { 
+            app = getApp(); 
+        }
         const auth = getAuth(app);
         const db = getFirestore(app);
+        try { // Try to initialize analytics, but don't let it break the app if it fails (e.g., adblockers)
+            const analytics = getAnalytics(app);
+        } catch (e) {
+            console.warn("Firebase Analytics could not be initialized.", e);
+        }
         
         let userId = null;
         let historicoLocal = [];
 
-        // Elementos do DOM
         const formatoTapeteRadios = document.querySelectorAll('input[name="formatoTapete"]');
         const inputsRedondoDiv = document.getElementById('inputsRedondo');
         const inputsRetangularDiv = document.getElementById('inputsRetangular');
@@ -303,11 +313,10 @@
         const exportarRelatorioBtn = document.getElementById('exportarRelatorioBtn');
         const exportarImagemBtn = document.getElementById('exportarImagemBtn'); 
         const relatorioVisualParaImagemDiv = document.getElementById('relatorioVisualParaImagem');
-        const botoesAcaoRelatorioDiv = document.querySelector('.botoes-acao-relatorio'); // Seleciona a div dos botões
-
+        const botoesAcaoRelatorioDiv = document.querySelector('.botoes-acao-relatorio');
 
         function showModal(message, isTemporary = false, duration = 3000) {
-            modalMessageText.textContent = message;
+            modalMessageText.textContent = message; 
             messageModal.style.display = 'flex';
             if (isTemporary) {
                 modalCloseBtn.style.display = 'none'; 
@@ -379,14 +388,14 @@
                 historicoOrdenado.forEach(tapete => {
                     const itemDiv = document.createElement('div');
                     itemDiv.className = 'historico-item';
-                    itemDiv.innerHTML = `
-                        <p><strong>Formato:</strong> ${tapete.formato}</p>
-                        <p><strong>Medidas:</strong> ${tapete.dimensoesTexto}</p>
-                        <p><strong>Área:</strong> ${formatNumber(tapete.area)} m²</p>
-                        <p><strong>Valor m²:</strong> ${formatCurrency(tapete.valorMetroQuadrado)}</p>
-                        <p><strong>Preço:</strong> ${formatCurrency(tapete.precoTotal)}</p>
-                        <p class="text-xs text-slate-400"><strong>Data:</strong> ${formatFirebaseTimestamp(tapete.timestamp)}</p>
-                    `;
+                    itemDiv.innerHTML = \`
+                        <p><strong>Formato:</strong> \${tapete.formato}</p>
+                        <p><strong>Medidas:</strong> \${tapete.dimensoesTexto}</p>
+                        <p><strong>Área:</strong> \${formatNumber(tapete.area)} m²</p>
+                        <p><strong>Valor m²:</strong> \${formatCurrency(tapete.valorMetroQuadrado)}</p>
+                        <p><strong>Preço:</strong> \${formatCurrency(tapete.precoTotal)}</p>
+                        <p class="text-xs text-slate-400"><strong>Data:</strong> \${formatFirebaseTimestamp(tapete.timestamp)}</p>
+                    \`;
                     historicoTapetesListaDiv.appendChild(itemDiv);
                 });
             }
@@ -399,18 +408,18 @@
             const totalQuantidade = historicoLocal.length; 
 
             totalQuantidadeTapetesSpan.textContent = totalQuantidade.toString(); 
-            totalAreaGlobalSpan.textContent = `${formatNumber(totalArea)} m²`;
+            totalAreaGlobalSpan.textContent = \`\${formatNumber(totalArea)} m²\`;
             totalPrecoGlobalSpan.textContent = formatCurrency(totalPreco);
         }
 
         async function adicionarTapeteAoFirestore(tapeteData) {
             if (!userId) {
-                showModal("Erro: ID do usuário não definido. Não é possível salvar.");
-                console.error("ID do usuário não definido.");
+                showModal("Erro: ID do usuário não definido. Não é possível salvar o histórico.");
+                console.error("ID do usuário não definido ao tentar adicionar ao Firestore.");
                 return;
             }
             try {
-                const historicoCollectionRef = collection(db, `artifacts/${appId}/users/${userId}/tapetesCalculados`);
+                const historicoCollectionRef = collection(db, \`apps/\${NOME_DA_APP_PARA_COLECAO}/usuarios/\${userId}/tapetesCalculados\`);
                 await addDoc(historicoCollectionRef, {
                     ...tapeteData,
                     timestamp: serverTimestamp() 
@@ -418,7 +427,7 @@
                 console.log("Tapete adicionado ao Firestore com sucesso!");
             } catch (error) {
                 console.error("Erro ao adicionar tapete ao Firestore: ", error);
-                showModal(`Erro ao salvar no banco de dados: ${error.message}`);
+                showModal(\`Erro ao salvar no banco de dados: \${error.message}\`);
             }
         }
         
@@ -429,7 +438,7 @@
             }
              if (loadingHistoricoP) loadingHistoricoP.textContent = 'Carregando histórico...';
 
-            const historicoCollectionRef = collection(db, `artifacts/${appId}/users/${userId}/tapetesCalculados`);
+            const historicoCollectionRef = collection(db, \`apps/\${NOME_DA_APP_PARA_COLECAO}/usuarios/\${userId}/tapetesCalculados\`);
             const q = query(historicoCollectionRef);
 
             onSnapshot(q, (snapshot) => {
@@ -441,7 +450,7 @@
             }, (error) => {
                 console.error("Erro ao carregar histórico do Firestore: ", error);
                 if (loadingHistoricoP) loadingHistoricoP.textContent = 'Erro ao carregar histórico.';
-                showModal(`Erro ao carregar histórico: ${error.message}`);
+                showModal(\`Erro ao carregar histórico: \${error.message}\`);
             });
         }
 
@@ -462,7 +471,7 @@
             }
 
             if (!calculoValido) {
-                resultadoCalculoAtualDiv.innerHTML = `<p class="text-lg text-red-400">Corrija os erros acima.</p>`;
+                resultadoCalculoAtualDiv.innerHTML = \`<p class="text-lg text-red-400">Corrija os erros acima.</p>\`;
                 return;
             }
 
@@ -477,7 +486,7 @@
                     } else {
                         const raio = diametro / 2;
                         area = Math.PI * Math.pow(raio, 2);
-                        dimensoesTexto = `Diâmetro: ${formatNumber(diametro)} m`;
+                        dimensoesTexto = \`Diâmetro: \${formatNumber(diametro)} m\`;
                     }
                 }
             } else { // retangular
@@ -493,7 +502,7 @@
                         if (isNaN(comprimento) || comprimento <= 0) comprimentoInput.focus(); else larguraInput.focus();
                     } else {
                         area = comprimento * largura;
-                        dimensoesTexto = `Comp: ${formatNumber(comprimento)} m, Larg: ${formatNumber(largura)} m`;
+                        dimensoesTexto = \`Comp: \${formatNumber(comprimento)} m, Larg: \${formatNumber(largura)} m\`;
                     }
                 }
             }
@@ -508,17 +517,17 @@
                     precoTotal: precoTotal
                 };
 
-                resultadoCalculoAtualDiv.innerHTML = `
+                resultadoCalculoAtualDiv.innerHTML = \`
                     <div class="text-center space-y-1">
-                        <p class="text-md font-medium text-slate-300">Área: <strong class="text-white">${formatNumber(area)} m²</strong></p>
-                        <p class="text-md font-medium text-slate-300">Preço: <strong class="text-white">${formatCurrency(precoTotal)}</strong></p>
-                    </div>`;
+                        <p class="text-md font-medium text-slate-300">Área: <strong class="text-white">\${formatNumber(area)} m²</strong></p>
+                        <p class="text-md font-medium text-slate-300">Preço: <strong class="text-white">\${formatCurrency(precoTotal)}</strong></p>
+                    </div>\`;
                 
                 adicionarTapeteAoFirestore(tapeteCalculado); 
             } else if (calculoValido) { 
-                 resultadoCalculoAtualDiv.innerHTML = `<p class="text-lg text-red-400">Erro no cálculo. Verifique os valores.</p>`;
+                 resultadoCalculoAtualDiv.innerHTML = \`<p class="text-lg text-red-400">Erro no cálculo. Verifique os valores.</p>\`;
             } else { 
-                 resultadoCalculoAtualDiv.innerHTML = `<p class="text-lg text-red-400">Corrija os erros nas dimensões.</p>`;
+                 resultadoCalculoAtualDiv.innerHTML = \`<p class="text-lg text-red-400">Corrija os erros nas dimensões.</p>\`;
             }
         }
         calcularBtn.addEventListener('click', calcularEAdicionar);
@@ -535,20 +544,26 @@
         onAuthStateChanged(auth, async (user) => {
             if (user) {
                 userId = user.uid;
-                userIdDisplay.textContent = userId;
+                userIdDisplay.textContent = userId; 
+                console.log("Usuário autenticado (anônimo ou outro):", userId);
                 await carregarHistoricoDoFirestore();
             } else {
                 userIdDisplay.textContent = "Autenticando...";
+                console.log("Nenhum usuário. Tentando login anônimo...");
                 try {
-                    if (initialAuthTokenFromEnv) {
-                        await signInWithCustomToken(auth, initialAuthTokenFromEnv);
-                    } else {
-                        await signInAnonymously(auth);
-                    }
+                    await signInAnonymously(auth);
+                    // onAuthStateChanged será chamado novamente com 'user' preenchido após o sucesso.
+                    console.log("Pedido de login anônimo enviado.");
                 } catch (error) {
-                    console.error("Erro na autenticação: ", error);
-                    userIdDisplay.textContent = "Falha na autenticação.";
-                    showModal(`Falha na autenticação: ${error.message}. O histórico não será salvo/carregado.`);
+                    console.error("Erro CRÍTICO na autenticação anônima: ", error);
+                    userIdDisplay.textContent = "Falha GRAVE na autenticação.";
+                    let detailedErrorMessage = \`Falha crítica na autenticação: \${error.message}. O histórico não funcionará.\`;
+                    if (error.code === 'auth/configuration-not-found') {
+                        detailedErrorMessage += "\\n\\nPossíveis causas e soluções:\\n1. VERIFIQUE A 'firebaseConfig': Confirme se apiKey, projectId, authDomain, etc., no seu código são EXATAMENTE iguais aos do seu projeto Firebase.\\n2. PROJETO ATIVO: Certifique-se que o projeto Firebase '\${firebaseConfig.projectId}' existe e está ativo.\\n3. LOGIN ANÔNIMO ATIVADO: No Console Firebase > Authentication > Sign-in method, confirme que 'Anônimo' está ATIVADO.";
+                    } else {
+                        detailedErrorMessage += "\\nVerifique a consola do programador (F12) para mais detalhes do erro Firebase.";
+                    }
+                    showModal(detailedErrorMessage);
                     if (loadingHistoricoP) loadingHistoricoP.textContent = 'Falha na autenticação. Histórico indisponível.';
                 }
             }
@@ -559,7 +574,9 @@
                 showModal("Autentique-se primeiro para interagir com o histórico.");
                 return;
             }
-            showModal("A limpeza do histórico no banco de dados não está implementada nesta demonstração. O histórico exibido será limpo apenas localmente.");
+            // AVISO: Esta limpeza é apenas local na interface.
+            // Para apagar do Firestore, seria necessário implementar a lógica com writeBatch e getDocs.
+            showModal("O histórico exibido será limpo apenas localmente. Os dados permanecem no banco de dados nesta demonstração.");
             historicoLocal = [];
             exibirHistorico();
         });
@@ -571,27 +588,34 @@
             }
             let csvContent = "data:text/csv;charset=utf-8,";
             const headers = ["Data/Hora", "Formato", "Medidas", "Área (m²)", "Valor m² (R$)", "Preço Total (R$)"];
-            csvContent += headers.join(";") + "\r\n";
-            const historicoOrdenado = [...historicoLocal].sort((a, b) => (a.timestamp?.toDate ? a.timestamp.toDate().getTime() : 0) - (b.timestamp?.toDate ? b.timestamp.toDate().getTime() : 0));
+            csvContent += headers.join(";") + "\\r\\n";
+            const historicoOrdenado = [...historicoLocal].sort((a, b) => {
+                 const timeA = a.timestamp?.toDate ? a.timestamp.toDate().getTime() : (a.timestamp || 0);
+                 const timeB = b.timestamp?.toDate ? b.timestamp.toDate().getTime() : (b.timestamp || 0);
+                 return timeB - timeA; // Mais recente primeiro
+            });
             historicoOrdenado.forEach(item => {
                 const linha = [
-                    `"${formatFirebaseTimestamp(item.timestamp)}"`, item.formato, `"${item.dimensoesTexto}"`,
-                    formatNumber(item.area).replace('.',','), formatNumber(item.valorMetroQuadrado).replace('.',','),
+                    \`"\${formatFirebaseTimestamp(item.timestamp)}"\`, 
+                    item.formato, 
+                    \`"\${item.dimensoesTexto}"\`,
+                    formatNumber(item.area).replace('.',','), 
+                    formatNumber(item.valorMetroQuadrado).replace('.',','),
                     formatNumber(item.precoTotal).replace('.',',')
                 ];
-                csvContent += linha.join(";") + "\r\n";
+                csvContent += linha.join(";") + "\\r\\n";
             });
-            csvContent += "\r\n";
-            csvContent += `;;TOTAL TAPETES:;${historicoLocal.length}\r\n`;
+            csvContent += "\\r\\n";
+            csvContent += \`;;TOTAL TAPETES:;\${historicoLocal.length}\\r\\n\`;
             const totalArea = historicoLocal.reduce((sum, item) => sum + item.area, 0);
-            csvContent += `;;TOTAL ÁREA (m²):;${formatNumber(totalArea).replace('.',',')}\r\n`;
+            csvContent += \`;;TOTAL ÁREA (m²):;\${formatNumber(totalArea).replace('.',',')}\\r\\n\`;
             const totalPreco = historicoLocal.reduce((sum, item) => sum + item.precoTotal, 0);
-            csvContent += `;;TOTAL PREÇO (R$):;${formatNumber(totalPreco).replace('.',',')}\r\n`;
+            csvContent += \`;;TOTAL PREÇO (R$):;\${formatNumber(totalPreco).replace('.',',')}\\r\\n\`;
             const encodedUri = encodeURI(csvContent);
             const link = document.createElement("a");
             link.setAttribute("href", encodedUri);
             const dataAtual = new Date().toISOString().slice(0,10);
-            link.setAttribute("download", `relatorio_tapetes_${dataAtual}.csv`);
+            link.setAttribute("download", \`relatorio_tapetes_\${dataAtual}.csv\`);
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
@@ -599,7 +623,6 @@
         }
         exportarRelatorioBtn.addEventListener('click', exportarRelatorioCSV);
 
-        // Função para Exportar como Imagem (PNG)
         async function exportarComoImagem() {
             if (!relatorioVisualParaImagemDiv) {
                 showModal("Erro: Elemento do relatório visual não encontrado.");
@@ -610,26 +633,22 @@
                 return;
             }
 
-            showModal("A gerar imagem do relatório...", true, 2000); // Mensagem temporária mais curta
+            showModal("A gerar imagem do relatório...", true, 2000); 
 
-            // Esconder os botões antes da captura
             const displayOriginalBotoes = botoesAcaoRelatorioDiv.style.display;
             botoesAcaoRelatorioDiv.style.display = 'none';
             
-            // Adicionar um pequeno delay para garantir que os botões foram escondidos no DOM
             await new Promise(resolve => setTimeout(resolve, 100));
 
-
-            // Opções para html2canvas
             const options = {
                 scale: 2, 
                 useCORS: true, 
                 logging: false, 
-                backgroundColor: '#1f2937', // Cor de fundo slate-800
-                scrollX: 0, // Evitar captura de scroll horizontal
-                scrollY: -window.scrollY, // Compensa o scroll da página principal
-                windowWidth: relatorioVisualParaImagemDiv.scrollWidth, // Usar a largura do conteúdo
-                windowHeight: relatorioVisualParaImagemDiv.scrollHeight // Usar a altura do conteúdo
+                backgroundColor: '#1f2937', 
+                scrollX: 0, 
+                scrollY: -window.scrollY, 
+                windowWidth: relatorioVisualParaImagemDiv.scrollWidth, 
+                windowHeight: relatorioVisualParaImagemDiv.scrollHeight 
             };
 
             try {
@@ -637,7 +656,7 @@
                 const imageURL = canvas.toDataURL("image/png");
                 const link = document.createElement('a');
                 const dataAtual = new Date().toISOString().slice(0,10);
-                link.download = `relatorio_visual_tapetes_${dataAtual}.png`;
+                link.download = \`relatorio_visual_tapetes_\${dataAtual}.png\`;
                 link.href = imageURL;
                 document.body.appendChild(link);
                 link.click();
@@ -647,15 +666,15 @@
                 console.error("Erro ao gerar imagem com html2canvas:", err);
                 showModal("Erro ao gerar imagem do relatório. Tente novamente.");
             } finally {
-                // Mostrar os botões novamente, independentemente do resultado
                 botoesAcaoRelatorioDiv.style.display = displayOriginalBotoes;
             }
         }
         exportarImagemBtn.addEventListener('click', exportarComoImagem);
 
-
         document.addEventListener('DOMContentLoaded', () => {
             atualizarInterfaceFormato();
+            // A autenticação e o carregamento do histórico são agora tratados pelo onAuthStateChanged
+            // que é chamado assim que o script carrega e o estado de autenticação é determinado.
         });
     </script>
 </body>
