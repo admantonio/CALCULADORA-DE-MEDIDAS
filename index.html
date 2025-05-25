@@ -251,24 +251,25 @@
     </div>
 
     <script type="module">
-        // Your web app's Firebase configuration (AS PROVIDED BY THE USER)
+        // Your web app's Firebase configuration (FROM THE USER'S NEW PROJECT)
         const firebaseConfig = {
             apiKey: "AIzaSyDF-TSSuB2U7ufne5XZqzYoxfv5CFUzbKs",
             authDomain: "calculado-de-medidas.firebaseapp.com",
+            databaseURL: "https://calculado-de-medidas-default-rtdb.firebaseio.com",
             projectId: "calculado-de-medidas",
             storageBucket: "calculado-de-medidas.firebasestorage.app",
             messagingSenderId: "659371120644",
-            appId: "1:659371120644:web:124e991745c4094030bd51",
-            measurementId: "G-0R44WQFQFQ"
+            appId: "1:659371120644:web:dc2e0e6871ee3b3c30bd51",
+            measurementId: "G-SV3KWVSNF9"
         };
 
         // Path for Firestore collection (using a fixed name for this app to keep user data organized)
         const NOME_DA_APP_PARA_COLECAO = 'minha-calculadora-tapetes-v1';
 
-        // Importações do Firebase (using version 11.8.1 as provided by user's snippet)
+        // Importações do Firebase (using version 11.8.1 as in user's snippet)
         import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-auth.js"; // signInWithCustomToken removed as it's not used with this config.
-        import { getFirestore, collection, addDoc, onSnapshot, query, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-firestore.js"; // writeBatch, getDocs removed as 'limparHistorico' is local for now.
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, onSnapshot, query, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-firestore.js";
         import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-analytics.js";
         
         let app;
@@ -279,7 +280,7 @@
         }
         const auth = getAuth(app);
         const db = getFirestore(app);
-        try { // Try to initialize analytics, but don't let it break the app if it fails (e.g., adblockers)
+        try { 
             const analytics = getAnalytics(app);
         } catch (e) {
             console.warn("Firebase Analytics could not be initialized.", e);
@@ -349,7 +350,7 @@
                 labelRetangular.classList.add('selected');
                 labelRedondo.classList.remove('selected');
             }
-            resultadoCalculoAtualDiv.innerHTML = `<p class="text-sm text-slate-300">O resultado do cálculo atual aparecerá aqui.</p>`;
+            resultadoCalculoAtualDiv.innerHTML = `<p class="text-sm text-slate-300">O resultado do cálculo atual aparecerá aqui.</p>`; // CORRIGIDO
             [diametroInput, comprimentoInput, larguraInput, valorMetroInput].forEach(input => input.value = '');
         }
         formatoTapeteRadios.forEach(radio => radio.addEventListener('change', atualizarInterfaceFormato));
@@ -388,14 +389,14 @@
                 historicoOrdenado.forEach(tapete => {
                     const itemDiv = document.createElement('div');
                     itemDiv.className = 'historico-item';
-                    itemDiv.innerHTML = \`
-                        <p><strong>Formato:</strong> \${tapete.formato}</p>
-                        <p><strong>Medidas:</strong> \${tapete.dimensoesTexto}</p>
-                        <p><strong>Área:</strong> \${formatNumber(tapete.area)} m²</p>
-                        <p><strong>Valor m²:</strong> \${formatCurrency(tapete.valorMetroQuadrado)}</p>
-                        <p><strong>Preço:</strong> \${formatCurrency(tapete.precoTotal)}</p>
-                        <p class="text-xs text-slate-400"><strong>Data:</strong> \${formatFirebaseTimestamp(tapete.timestamp)}</p>
-                    \`;
+                    itemDiv.innerHTML = `
+                        <p><strong>Formato:</strong> ${tapete.formato}</p>
+                        <p><strong>Medidas:</strong> ${tapete.dimensoesTexto}</p>
+                        <p><strong>Área:</strong> ${formatNumber(tapete.area)} m²</p>
+                        <p><strong>Valor m²:</strong> ${formatCurrency(tapete.valorMetroQuadrado)}</p>
+                        <p><strong>Preço:</strong> ${formatCurrency(tapete.precoTotal)}</p>
+                        <p class="text-xs text-slate-400"><strong>Data:</strong> ${formatFirebaseTimestamp(tapete.timestamp)}</p>
+                    `; // CORRIGIDO
                     historicoTapetesListaDiv.appendChild(itemDiv);
                 });
             }
@@ -408,7 +409,7 @@
             const totalQuantidade = historicoLocal.length; 
 
             totalQuantidadeTapetesSpan.textContent = totalQuantidade.toString(); 
-            totalAreaGlobalSpan.textContent = \`\${formatNumber(totalArea)} m²\`;
+            totalAreaGlobalSpan.textContent = `${formatNumber(totalArea)} m²`; // CORRIGIDO
             totalPrecoGlobalSpan.textContent = formatCurrency(totalPreco);
         }
 
@@ -419,7 +420,7 @@
                 return;
             }
             try {
-                const historicoCollectionRef = collection(db, \`apps/\${NOME_DA_APP_PARA_COLECAO}/usuarios/\${userId}/tapetesCalculados\`);
+                const historicoCollectionRef = collection(db, `apps/${NOME_DA_APP_PARA_COLECAO}/usuarios/${userId}/tapetesCalculados`); // CORRIGIDO
                 await addDoc(historicoCollectionRef, {
                     ...tapeteData,
                     timestamp: serverTimestamp() 
@@ -427,7 +428,7 @@
                 console.log("Tapete adicionado ao Firestore com sucesso!");
             } catch (error) {
                 console.error("Erro ao adicionar tapete ao Firestore: ", error);
-                showModal(\`Erro ao salvar no banco de dados: \${error.message}\`);
+                showModal(`Erro ao salvar no banco de dados: ${error.message}`); // CORRIGIDO
             }
         }
         
@@ -438,7 +439,7 @@
             }
              if (loadingHistoricoP) loadingHistoricoP.textContent = 'Carregando histórico...';
 
-            const historicoCollectionRef = collection(db, \`apps/\${NOME_DA_APP_PARA_COLECAO}/usuarios/\${userId}/tapetesCalculados\`);
+            const historicoCollectionRef = collection(db, `apps/${NOME_DA_APP_PARA_COLECAO}/usuarios/${userId}/tapetesCalculados`); // CORRIGIDO
             const q = query(historicoCollectionRef);
 
             onSnapshot(q, (snapshot) => {
@@ -450,7 +451,7 @@
             }, (error) => {
                 console.error("Erro ao carregar histórico do Firestore: ", error);
                 if (loadingHistoricoP) loadingHistoricoP.textContent = 'Erro ao carregar histórico.';
-                showModal(\`Erro ao carregar histórico: \${error.message}\`);
+                showModal(`Erro ao carregar histórico: ${error.message}`); // CORRIGIDO
             });
         }
 
@@ -471,7 +472,7 @@
             }
 
             if (!calculoValido) {
-                resultadoCalculoAtualDiv.innerHTML = \`<p class="text-lg text-red-400">Corrija os erros acima.</p>\`;
+                resultadoCalculoAtualDiv.innerHTML = `<p class="text-lg text-red-400">Corrija os erros acima.</p>`; // CORRIGIDO
                 return;
             }
 
@@ -486,7 +487,7 @@
                     } else {
                         const raio = diametro / 2;
                         area = Math.PI * Math.pow(raio, 2);
-                        dimensoesTexto = \`Diâmetro: \${formatNumber(diametro)} m\`;
+                        dimensoesTexto = `Diâmetro: ${formatNumber(diametro)} m`; // CORRIGIDO
                     }
                 }
             } else { // retangular
@@ -502,7 +503,7 @@
                         if (isNaN(comprimento) || comprimento <= 0) comprimentoInput.focus(); else larguraInput.focus();
                     } else {
                         area = comprimento * largura;
-                        dimensoesTexto = \`Comp: \${formatNumber(comprimento)} m, Larg: \${formatNumber(largura)} m\`;
+                        dimensoesTexto = `Comp: ${formatNumber(comprimento)} m, Larg: ${formatNumber(largura)} m`; // CORRIGIDO
                     }
                 }
             }
@@ -517,17 +518,17 @@
                     precoTotal: precoTotal
                 };
 
-                resultadoCalculoAtualDiv.innerHTML = \`
+                resultadoCalculoAtualDiv.innerHTML = `
                     <div class="text-center space-y-1">
-                        <p class="text-md font-medium text-slate-300">Área: <strong class="text-white">\${formatNumber(area)} m²</strong></p>
-                        <p class="text-md font-medium text-slate-300">Preço: <strong class="text-white">\${formatCurrency(precoTotal)}</strong></p>
-                    </div>\`;
+                        <p class="text-md font-medium text-slate-300">Área: <strong class="text-white">${formatNumber(area)} m²</strong></p>
+                        <p class="text-md font-medium text-slate-300">Preço: <strong class="text-white">${formatCurrency(precoTotal)}</strong></p>
+                    </div>`; // CORRIGIDO
                 
                 adicionarTapeteAoFirestore(tapeteCalculado); 
             } else if (calculoValido) { 
-                 resultadoCalculoAtualDiv.innerHTML = \`<p class="text-lg text-red-400">Erro no cálculo. Verifique os valores.</p>\`;
+                 resultadoCalculoAtualDiv.innerHTML = `<p class="text-lg text-red-400">Erro no cálculo. Verifique os valores.</p>`; // CORRIGIDO
             } else { 
-                 resultadoCalculoAtualDiv.innerHTML = \`<p class="text-lg text-red-400">Corrija os erros nas dimensões.</p>\`;
+                 resultadoCalculoAtualDiv.innerHTML = `<p class="text-lg text-red-400">Corrija os erros nas dimensões.</p>`; // CORRIGIDO
             }
         }
         calcularBtn.addEventListener('click', calcularEAdicionar);
@@ -545,23 +546,22 @@
             if (user) {
                 userId = user.uid;
                 userIdDisplay.textContent = userId; 
-                console.log("Usuário autenticado (anônimo ou outro):", userId);
+                console.log("Usuário autenticado:", userId);
                 await carregarHistoricoDoFirestore();
             } else {
                 userIdDisplay.textContent = "Autenticando...";
                 console.log("Nenhum usuário. Tentando login anônimo...");
                 try {
                     await signInAnonymously(auth);
-                    // onAuthStateChanged será chamado novamente com 'user' preenchido após o sucesso.
-                    console.log("Pedido de login anônimo enviado.");
+                    console.log("Pedido de login anônimo enviado. onAuthStateChanged será chamado novamente.");
                 } catch (error) {
                     console.error("Erro CRÍTICO na autenticação anônima: ", error);
                     userIdDisplay.textContent = "Falha GRAVE na autenticação.";
-                    let detailedErrorMessage = \`Falha crítica na autenticação: \${error.message}. O histórico não funcionará.\`;
+                    let detailedErrorMessage = `Falha crítica na autenticação: ${error.message}. O histórico não funcionará.`; // CORRIGIDO
                     if (error.code === 'auth/configuration-not-found') {
-                        detailedErrorMessage += "\\n\\nPossíveis causas e soluções:\\n1. VERIFIQUE A 'firebaseConfig': Confirme se apiKey, projectId, authDomain, etc., no seu código são EXATAMENTE iguais aos do seu projeto Firebase.\\n2. PROJETO ATIVO: Certifique-se que o projeto Firebase '\${firebaseConfig.projectId}' existe e está ativo.\\n3. LOGIN ANÔNIMO ATIVADO: No Console Firebase > Authentication > Sign-in method, confirme que 'Anônimo' está ATIVADO.";
+                        detailedErrorMessage += `\n\nPossíveis causas e soluções:\n1. VERIFIQUE A 'firebaseConfig': Confirme se apiKey, projectId, authDomain, etc., no seu código são EXATAMENTE iguais aos do seu NOVO projeto Firebase.\n2. PROJETO ATIVO: Certifique-se que o projeto Firebase '${firebaseConfig.projectId}' existe e está ativo.\n3. LOGIN ANÔNIMO ATIVADO: No Console Firebase > Authentication > Sign-in method, confirme que 'Anônimo' está ATIVADO para o NOVO projeto.`; // CORRIGIDO
                     } else {
-                        detailedErrorMessage += "\\nVerifique a consola do programador (F12) para mais detalhes do erro Firebase.";
+                        detailedErrorMessage += "\nVerifique a consola do programador (F12) para mais detalhes do erro Firebase.";
                     }
                     showModal(detailedErrorMessage);
                     if (loadingHistoricoP) loadingHistoricoP.textContent = 'Falha na autenticação. Histórico indisponível.';
@@ -574,8 +574,6 @@
                 showModal("Autentique-se primeiro para interagir com o histórico.");
                 return;
             }
-            // AVISO: Esta limpeza é apenas local na interface.
-            // Para apagar do Firestore, seria necessário implementar a lógica com writeBatch e getDocs.
             showModal("O histórico exibido será limpo apenas localmente. Os dados permanecem no banco de dados nesta demonstração.");
             historicoLocal = [];
             exibirHistorico();
@@ -588,34 +586,34 @@
             }
             let csvContent = "data:text/csv;charset=utf-8,";
             const headers = ["Data/Hora", "Formato", "Medidas", "Área (m²)", "Valor m² (R$)", "Preço Total (R$)"];
-            csvContent += headers.join(";") + "\\r\\n";
+            csvContent += headers.join(";") + "\r\n"; // CORRIGIDO
             const historicoOrdenado = [...historicoLocal].sort((a, b) => {
                  const timeA = a.timestamp?.toDate ? a.timestamp.toDate().getTime() : (a.timestamp || 0);
                  const timeB = b.timestamp?.toDate ? b.timestamp.toDate().getTime() : (b.timestamp || 0);
-                 return timeB - timeA; // Mais recente primeiro
+                 return timeB - timeA; 
             });
             historicoOrdenado.forEach(item => {
                 const linha = [
-                    \`"\${formatFirebaseTimestamp(item.timestamp)}"\`, 
+                    `"${formatFirebaseTimestamp(item.timestamp)}"`, 
                     item.formato, 
-                    \`"\${item.dimensoesTexto}"\`,
+                    `"${item.dimensoesTexto}"`,
                     formatNumber(item.area).replace('.',','), 
                     formatNumber(item.valorMetroQuadrado).replace('.',','),
                     formatNumber(item.precoTotal).replace('.',',')
                 ];
-                csvContent += linha.join(";") + "\\r\\n";
+                csvContent += linha.join(";") + "\r\n"; // CORRIGIDO
             });
-            csvContent += "\\r\\n";
-            csvContent += \`;;TOTAL TAPETES:;\${historicoLocal.length}\\r\\n\`;
+            csvContent += "\r\n"; // CORRIGIDO
+            csvContent += `;;TOTAL TAPETES:;${historicoLocal.length}\r\n`; // CORRIGIDO
             const totalArea = historicoLocal.reduce((sum, item) => sum + item.area, 0);
-            csvContent += \`;;TOTAL ÁREA (m²):;\${formatNumber(totalArea).replace('.',',')}\\r\\n\`;
+            csvContent += `;;TOTAL ÁREA (m²):;${formatNumber(totalArea).replace('.',',')}\r\n`; // CORRIGIDO
             const totalPreco = historicoLocal.reduce((sum, item) => sum + item.precoTotal, 0);
-            csvContent += \`;;TOTAL PREÇO (R$):;\${formatNumber(totalPreco).replace('.',',')}\\r\\n\`;
+            csvContent += `;;TOTAL PREÇO (R$):;${formatNumber(totalPreco).replace('.',',')}\r\n`; // CORRIGIDO
             const encodedUri = encodeURI(csvContent);
             const link = document.createElement("a");
             link.setAttribute("href", encodedUri);
             const dataAtual = new Date().toISOString().slice(0,10);
-            link.setAttribute("download", \`relatorio_tapetes_\${dataAtual}.csv\`);
+            link.setAttribute("download", `relatorio_tapetes_${dataAtual}.csv`); // CORRIGIDO
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
@@ -656,7 +654,7 @@
                 const imageURL = canvas.toDataURL("image/png");
                 const link = document.createElement('a');
                 const dataAtual = new Date().toISOString().slice(0,10);
-                link.download = \`relatorio_visual_tapetes_\${dataAtual}.png\`;
+                link.download = `relatorio_visual_tapetes_${dataAtual}.png`; // CORRIGIDO
                 link.href = imageURL;
                 document.body.appendChild(link);
                 link.click();
@@ -673,8 +671,6 @@
 
         document.addEventListener('DOMContentLoaded', () => {
             atualizarInterfaceFormato();
-            // A autenticação e o carregamento do histórico são agora tratados pelo onAuthStateChanged
-            // que é chamado assim que o script carrega e o estado de autenticação é determinado.
         });
     </script>
 </body>
