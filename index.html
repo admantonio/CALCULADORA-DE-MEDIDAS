@@ -251,7 +251,7 @@
     </div>
 
     <script type="module">
-        // Your web app's Firebase configuration
+        // Your web app's Firebase configuration (FROM THE USER'S NEW PROJECT)
         const firebaseConfig = {
             apiKey: "AIzaSyDF-TSSuB2U7ufne5XZqzYoxfv5CFUzbKs",
             authDomain: "calculado-de-medidas.firebaseapp.com",
@@ -448,4 +448,274 @@
                 exibirHistorico(); 
             }, (error) => {
                 console.error("Erro ao carregar histórico do Firestore: ", error);
-                i
+                if (loadingHistoricoP) loadingHistoricoP.textContent = 'Erro ao carregar histórico.';
+                showModal(`Erro ao carregar histórico: ${error.message}`);
+            });
+        }
+
+        function calcularEAdicionar() {
+            const formatoSelecionado = document.querySelector('input[name="formatoTapete"]:checked').value;
+            let area, dimensoesTexto;
+            let calculoValido = true;
+
+            const valorMetroTexto = valorMetroInput.value;
+            if (valorMetroTexto.trim() === "") {
+                showModal("Por favor, insira o valor do metro quadrado (R$).");
+                calculoValido = false; valorMetroInput.focus();
+            }
+            const valorMetro = parseFloat(valorMetroTexto.replace(',', '.'));
+            if (calculoValido && (isNaN(valorMetro) || valorMetro <= 0)) {
+                showModal("Por favor, insira um número positivo válido para o valor do m².");
+                calculoValido = false; valorMetroInput.focus();
+            }
+
+            if (!calculoValido) {
+                resultadoCalculoAtualDiv.innerHTML = `<p class="text-lg text-red-400">Corrija os erros acima.</p>`;
+                return;
+            }
+
+            if (formatoSelecionado === 'redondo') {
+                const diametroTexto = diametroInput.value;
+                if (diametroTexto.trim() === "") {
+                    showModal("Por favor, insira um valor para o diâmetro."); calculoValido = false;
+                } else {
+                    const diametro = parseFloat(diametroTexto.replace(',', '.'));
+                    if (isNaN(diametro) || diametro <= 0) {
+                        showModal("Diâmetro inválido."); calculoValido = false; diametroInput.focus();
+                    } else {
+                        const raio = diametro / 2;
+                        area = Math.PI * Math.pow(raio, 2);
+                        dimensoesTexto = `Diâmetro: ${formatNumber(diametro)} m`;
+                    }
+                }
+            } else { // retangular
+                const comprimentoTexto = comprimentoInput.value;
+                const larguraTexto = larguraInput.value;
+                if (comprimentoTexto.trim() === "" || larguraTexto.trim() === "") {
+                    showModal("Insira comprimento e largura."); calculoValido = false;
+                } else {
+                    const comprimento = parseFloat(comprimentoTexto.replace(',', '.'));
+                    const largura = parseFloat(larguraTexto.replace(',', '.'));
+                    if (isNaN(comprimento) || comprimento <= 0 || isNaN(largura) || largura <= 0) {
+                        showModal("Medidas inválidas para comprimento/largura."); calculoValido = false;
+                        if (isNaN(comprimento) || comprimento <= 0) comprimentoInput.focus(); else larguraInput.focus();
+                    } else {
+                        area = comprimento * largura;
+                        dimensoesTexto = `Comp: ${formatNumber(comprimento)} m, Larg: ${formatNumber(largura)} m`;
+                    }
+                }
+            }
+
+            if (calculoValido && area !== undefined) {
+                const precoTotal = area * valorMetro;
+                const tapeteCalculado = {
+                    formato: formatoSelecionado.charAt(0).toUpperCase() + formatoSelecionado.slice(1),
+                    dimensoesTexto: dimensoesTexto,
+                    area: area,
+                    valorMetroQuadrado: valorMetro,
+                    precoTotal: precoTotal
+                };
+
+                resultadoCalculoAtualDiv.innerHTML = `
+                    <div class="text-center space-y-1">
+                        <p class="text-md font-medium text-slate-300">Área: <strong class="text-white">${formatNumber(area)} m²</strong></p>
+                        <p class="text-md font-medium text-slate-300">Preço: <strong class="text-white">${formatCurrency(precoTotal)}</strong></p>
+                    </div>`;
+                
+                adicionarTapeteAoFirestore(tapeteCalculado); 
+            } else if (calculoValido) { 
+                 resultadoCalculoAtualDiv.innerHTML = `<p class="text-lg text-red-400">Erro no cálculo. Verifique os valores.</p>`;
+            } else { 
+                 resultadoCalculoAtualDiv.innerHTML = `<p class="text-lg text-red-400">Corrija os erros nas dimensões.</p>`;
+            }
+        }
+        calcularBtn.addEventListener('click', calcularEAdicionar);
+
+        [diametroInput, comprimentoInput, larguraInput, valorMetroInput].forEach(input => {
+            input.addEventListener('keypress', (event) => {
+                if (event.key === 'Enter') {
+                    event.preventDefault();
+                    calcularEAdicionar();
+                }
+            });
+        });
+        
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                userId = user.uid;
+                userIdDisplay.textContent = userId; 
+                console.log("Usuário autenticado:", userId);
+                await carregarHistoricoDoFirestore();
+            } else {
+                userIdDisplay.textContent = "Autenticando...";
+                console.log("Nenhum usuário. Tentando login anônimo...");
+                try {
+                    await signInAnonymously(auth);
+                    console.log("Pedido de login anônimo enviado. onAuthStateChanged será chamado novamente.");
+                } catch (error) {
+                    console.error("Erro CRÍTICO na autenticação anônima: ", error);
+                    userIdDisplay.textContent = "Falha GRAVE na autenticação.";
+                    let detailedErrorMessage = `Falha crítica na autenticação: ${error.message}. O histórico não funcionará.`;
+                    if (error.code === 'auth/configuration-not-found') {
+                        detailedErrorMessage += `\n\nPossíveis causas e soluções:\n1. VERIFIQUE A 'firebaseConfig': Confirme se apiKey, projectId, authDomain, etc., no seu código são EXATAMENTE iguais aos do seu NOVO projeto Firebase.\n2. PROJETO ATIVO: Certifique-se que o projeto Firebase '${firebaseConfig.projectId}' existe e está ativo.\n3. LOGIN ANÔNIMO ATIVADO: No Console Firebase > Authentication > Sign-in method, confirme que 'Anônimo' está ATIVADO para o NOVO projeto.`;
+                    } else {
+                        detailedErrorMessage += "\nVerifique a consola do programador (F12) para mais detalhes do erro Firebase.";
+                    }
+                    showModal(detailedErrorMessage);
+                    if (loadingHistoricoP) loadingHistoricoP.textContent = 'Falha na autenticação. Histórico indisponível.';
+                }
+            }
+        });
+
+        limparHistoricoBtn.addEventListener('click', async () => {
+            if (!userId) {
+                showModal("Autentique-se primeiro para interagir com o histórico.");
+                return;
+            }
+
+            // Usar o modal customizado para confirmação
+            showModal("Tem a certeza que deseja apagar TODO o histórico do banco de dados? Esta ação é irreversível.", false);
+            
+            // Modificar o evento do botão OK do modal para esta ação específica
+            const originalModalCloseBtnHandler = modalCloseBtn.onclick; // Salvar o handler original
+            modalCloseBtn.onclick = async () => {
+                closeModal(); // Fechar o modal de confirmação
+                modalCloseBtn.onclick = originalModalCloseBtnHandler; // Restaurar o handler original do botão OK
+
+                showModal("A apagar histórico do banco de dados...", true, 4000); 
+
+                const historicoCollectionRef = collection(db, `apps/${NOME_DA_APP_PARA_COLECAO}/usuarios/${userId}/tapetesCalculados`);
+                try {
+                    const querySnapshot = await getDocs(historicoCollectionRef);
+                    if (querySnapshot.empty) {
+                        showModal("O histórico já está vazio no banco de dados.");
+                        if (historicoLocal.length > 0) { 
+                            historicoLocal = [];
+                            exibirHistorico();
+                        }
+                        return;
+                    }
+
+                    const batch = writeBatch(db);
+                    querySnapshot.forEach(doc => {
+                        batch.delete(doc.ref);
+                    });
+                    await batch.commit();
+                    
+                    console.log("Histórico apagado do Firestore com sucesso.");
+                    showModal("Histórico apagado do banco de dados com sucesso!"); 
+
+                } catch (error) {
+                    console.error("Erro ao limpar histórico do Firestore: ", error);
+                    showModal("Erro ao limpar histórico do banco de dados: " + error.message);
+                }
+            };
+
+            // Se o utilizador fechar o modal clicando fora (sem ser no botão OK)
+            const tempWindowClickHandler = (event) => {
+                if (event.target == messageModal) {
+                    modalCloseBtn.onclick = originalModalCloseBtnHandler; // Restaurar handler
+                    window.removeEventListener('click', tempWindowClickHandler); // Remover este handler temporário
+                    showModal("Operação de limpeza do histórico cancelada.", true, 2000);
+                }
+            };
+            window.addEventListener('click', tempWindowClickHandler);
+
+        });
+
+        function exportarRelatorioCSV() {
+            if (historicoLocal.length === 0) {
+                showModal("Não há dados no histórico para exportar.");
+                return;
+            }
+            let csvContent = "data:text/csv;charset=utf-8,";
+            const headers = ["Data/Hora", "Formato", "Medidas", "Área (m²)", "Valor m² (R$)", "Preço Total (R$)"];
+            csvContent += headers.join(";") + "\r\n";
+            const historicoOrdenado = [...historicoLocal].sort((a, b) => {
+                 const timeA = a.timestamp?.toDate ? a.timestamp.toDate().getTime() : (a.timestamp || 0);
+                 const timeB = b.timestamp?.toDate ? b.timestamp.toDate().getTime() : (b.timestamp || 0);
+                 return timeB - timeA; 
+            });
+            historicoOrdenado.forEach(item => {
+                const linha = [
+                    `"${formatFirebaseTimestamp(item.timestamp)}"`, 
+                    item.formato, 
+                    `"${item.dimensoesTexto}"`,
+                    formatNumber(item.area).replace('.',','), 
+                    formatNumber(item.valorMetroQuadrado).replace('.',','),
+                    formatNumber(item.precoTotal).replace('.',',')
+                ];
+                csvContent += linha.join(";") + "\r\n";
+            });
+            csvContent += "\r\n";
+            csvContent += `;;TOTAL TAPETES:;${historicoLocal.length}\r\n`;
+            const totalArea = historicoLocal.reduce((sum, item) => sum + item.area, 0);
+            csvContent += `;;TOTAL ÁREA (m²):;${formatNumber(totalArea).replace('.',',')}\r\n`;
+            const totalPreco = historicoLocal.reduce((sum, item) => sum + item.precoTotal, 0);
+            csvContent += `;;TOTAL PREÇO (R$):;${formatNumber(totalPreco).replace('.',',')}\r\n`;
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            const dataAtual = new Date().toISOString().slice(0,10);
+            link.setAttribute("download", `relatorio_tapetes_${dataAtual}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            showModal("Relatório CSV gerado com sucesso!", true);
+        }
+        exportarRelatorioBtn.addEventListener('click', exportarRelatorioCSV);
+
+        async function exportarComoImagem() {
+            if (!relatorioVisualParaImagemDiv) {
+                showModal("Erro: Elemento do relatório visual não encontrado.");
+                return;
+            }
+            if (historicoLocal.length === 0) {
+                showModal("Não há histórico para exportar como imagem.");
+                return;
+            }
+
+            showModal("A gerar imagem do relatório...", true, 2000); 
+
+            const displayOriginalBotoes = botoesAcaoRelatorioDiv.style.display;
+            botoesAcaoRelatorioDiv.style.display = 'none';
+            
+            await new Promise(resolve => setTimeout(resolve, 100));
+
+            const options = {
+                scale: 2, 
+                useCORS: true, 
+                logging: false, 
+                backgroundColor: '#1f2937', 
+                scrollX: 0, 
+                scrollY: -window.scrollY, 
+                windowWidth: relatorioVisualParaImagemDiv.scrollWidth, 
+                windowHeight: relatorioVisualParaImagemDiv.scrollHeight 
+            };
+
+            try {
+                const canvas = await html2canvas(relatorioVisualParaImagemDiv, options);
+                const imageURL = canvas.toDataURL("image/png");
+                const link = document.createElement('a');
+                const dataAtual = new Date().toISOString().slice(0,10);
+                link.download = `relatorio_visual_tapetes_${dataAtual}.png`;
+                link.href = imageURL;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                showModal("Imagem do relatório gerada com sucesso!", true);
+            } catch (err) {
+                console.error("Erro ao gerar imagem com html2canvas:", err);
+                showModal("Erro ao gerar imagem do relatório. Tente novamente.");
+            } finally {
+                botoesAcaoRelatorioDiv.style.display = displayOriginalBotoes;
+            }
+        }
+        exportarImagemBtn.addEventListener('click', exportarComoImagem);
+
+        document.addEventListener('DOMContentLoaded', () => {
+            atualizarInterfaceFormato();
+        });
+    </script>
+</body>
+</html>
