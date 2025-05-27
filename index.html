@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Calculadora Avançada de Tapetes com Relatório e Imagem</title>
+    <title>Calculadora Avançada de Tapetes com Nome do Cliente</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" xintegrity="sha512-BNaRQnYJYiPSqHHDb58B0yaPfCu+Wgds8Gp/gU33kqBtgNS4tSPHuGibyoVBL5g+e9iwTgUBG/nEVhPEmXK4CA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -125,11 +125,11 @@
             color: #93c5fd;
         }
         #relatorioVisualParaImagem {
-            background-color: #1f2937; /* Cor de fundo (slate-800) para a imagem */
+            background-color: #1f2937; 
             padding-bottom: 1.5rem; 
         }
         .botoes-acao-relatorio {
-            /* Esta classe será usada para agrupar os botões que queremos esconder */
+            /* Classe para agrupar os botões */
         }
     </style>
 </head>
@@ -145,6 +145,12 @@
             <div class="mb-4">
                 <label class="block text-xs font-medium text-slate-400">ID do Usuário (Firebase):</label>
                 <p id="userIdDisplay" class="text-xs text-sky-300 break-all">Autenticando...</p>
+            </div>
+            
+            <div class="mb-6">
+                <label for="nomeCliente" class="block text-sm font-medium text-slate-300 mb-1">Nome do Cliente (Opcional):</label>
+                <input type="text" id="nomeCliente" name="nomeCliente" placeholder="Ex: Maria Santos"
+                       class="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-500 focus:ring-sky-500 focus:border-sky-500 custom-focus transition-colors duration-200">
             </div>
 
             <div class="mb-6">
@@ -207,7 +213,7 @@
             </header>
             <div id="historicoTapetesLista" class="space-y-3 max-h-96 overflow-y-auto pr-2 mb-6">
                 <p class="text-slate-400 text-center" id="loadingHistorico">Carregando histórico...</p>
-                </div>
+            </div>
 
             <div class="border-t border-slate-700 pt-6" id="secaoTotaisGerais"> 
                 <h3 class="text-xl font-semibold text-sky-400 mb-3 text-center">Totais Gerais</h3>
@@ -251,7 +257,7 @@
     </div>
 
     <script type="module">
-        // Your web app's Firebase configuration (FROM THE USER'S NEW PROJECT)
+        // Your web app's Firebase configuration
         const firebaseConfig = {
             apiKey: "AIzaSyDF-TSSuB2U7ufne5XZqzYoxfv5CFUzbKs",
             authDomain: "calculado-de-medidas.firebaseapp.com",
@@ -287,6 +293,8 @@
         let userId = null;
         let historicoLocal = [];
 
+        // Elementos do DOM
+        const nomeClienteInput = document.getElementById('nomeCliente'); 
         const formatoTapeteRadios = document.querySelectorAll('input[name="formatoTapete"]');
         const inputsRedondoDiv = document.getElementById('inputsRedondo');
         const inputsRetangularDiv = document.getElementById('inputsRetangular');
@@ -313,6 +321,19 @@
         const exportarImagemBtn = document.getElementById('exportarImagemBtn'); 
         const relatorioVisualParaImagemDiv = document.getElementById('relatorioVisualParaImagem');
         const botoesAcaoRelatorioDiv = document.querySelector('.botoes-acao-relatorio');
+
+        function escapeHTML(str) {
+            if (str === null || str === undefined) return '';
+            return str.replace(/[&<>"']/g, function (match) {
+                return {
+                    '&': '&amp;',
+                    '<': '&lt;',
+                    '>': '&gt;',
+                    '"': '&quot;',
+                    "'": '&#39;'
+                }[match];
+            });
+        }
 
         function showModal(message, isTemporary = false, duration = 3000) {
             modalMessageText.textContent = message; 
@@ -349,7 +370,11 @@
                 labelRedondo.classList.remove('selected');
             }
             resultadoCalculoAtualDiv.innerHTML = `<p class="text-sm text-slate-300">O resultado do cálculo atual aparecerá aqui.</p>`;
-            [diametroInput, comprimentoInput, larguraInput, valorMetroInput].forEach(input => input.value = '');
+            // Limpar apenas campos de dimensão ao mudar formato
+            diametroInput.value = '';
+            comprimentoInput.value = '';
+            larguraInput.value = '';
+            // Nome do cliente e valor/m² NÃO são limpos aqui
         }
         formatoTapeteRadios.forEach(radio => radio.addEventListener('change', atualizarInterfaceFormato));
 
@@ -387,7 +412,9 @@
                 historicoOrdenado.forEach(tapete => {
                     const itemDiv = document.createElement('div');
                     itemDiv.className = 'historico-item';
+                    const nomeClienteDisplay = tapete.nomeCliente ? escapeHTML(tapete.nomeCliente) : 'Não informado';
                     itemDiv.innerHTML = `
+                        <p><strong>Cliente:</strong> ${nomeClienteDisplay}</p>
                         <p><strong>Formato:</strong> ${tapete.formato}</p>
                         <p><strong>Medidas:</strong> ${tapete.dimensoesTexto}</p>
                         <p><strong>Área:</strong> ${formatNumber(tapete.area)} m²</p>
@@ -454,6 +481,7 @@
         }
 
         function calcularEAdicionar() {
+            const nomeCliente = nomeClienteInput.value.trim(); 
             const formatoSelecionado = document.querySelector('input[name="formatoTapete"]:checked').value;
             let area, dimensoesTexto;
             let calculoValido = true;
@@ -509,6 +537,7 @@
             if (calculoValido && area !== undefined) {
                 const precoTotal = area * valorMetro;
                 const tapeteCalculado = {
+                    nomeCliente: nomeCliente, 
                     formato: formatoSelecionado.charAt(0).toUpperCase() + formatoSelecionado.slice(1),
                     dimensoesTexto: dimensoesTexto,
                     area: area,
@@ -520,9 +549,17 @@
                     <div class="text-center space-y-1">
                         <p class="text-md font-medium text-slate-300">Área: <strong class="text-white">${formatNumber(area)} m²</strong></p>
                         <p class="text-md font-medium text-slate-300">Preço: <strong class="text-white">${formatCurrency(precoTotal)}</strong></p>
+                        ${nomeCliente ? `<p class="text-sm text-slate-400">Cliente: ${escapeHTML(nomeCliente)}</p>` : ''}
                     </div>`;
                 
                 adicionarTapeteAoFirestore(tapeteCalculado); 
+
+                // Limpar apenas campos de dimensão após adicionar
+                diametroInput.value = '';
+                comprimentoInput.value = '';
+                larguraInput.value = '';
+                // Nome do cliente e valor/m² NÃO são limpos aqui
+
             } else if (calculoValido) { 
                  resultadoCalculoAtualDiv.innerHTML = `<p class="text-lg text-red-400">Erro no cálculo. Verifique os valores.</p>`;
             } else { 
@@ -531,7 +568,7 @@
         }
         calcularBtn.addEventListener('click', calcularEAdicionar);
 
-        [diametroInput, comprimentoInput, larguraInput, valorMetroInput].forEach(input => {
+        [diametroInput, comprimentoInput, larguraInput, valorMetroInput, nomeClienteInput].forEach(input => { 
             input.addEventListener('keypress', (event) => {
                 if (event.key === 'Enter') {
                     event.preventDefault();
@@ -572,18 +609,35 @@
                 showModal("Autentique-se primeiro para interagir com o histórico.");
                 return;
             }
-
-            // Usar o modal customizado para confirmação
-            showModal("Tem a certeza que deseja apagar TODO o histórico do banco de dados? Esta ação é irreversível.", false);
             
-            // Modificar o evento do botão OK do modal para esta ação específica
-            const originalModalCloseBtnHandler = modalCloseBtn.onclick; // Salvar o handler original
-            modalCloseBtn.onclick = async () => {
-                closeModal(); // Fechar o modal de confirmação
-                modalCloseBtn.onclick = originalModalCloseBtnHandler; // Restaurar o handler original do botão OK
+            // Usar o modal customizado para confirmação
+            modalMessageText.textContent = "Tem a certeza que deseja apagar TODO o histórico do banco de dados? Esta ação é irreversível.";
+            messageModal.style.display = 'flex';
+            modalCloseBtn.textContent = 'Cancelar'; // Mudar texto do botão para Cancelar inicialmente
+
+            const originalModalCloseBtnHandler = modalCloseBtn.onclick; 
+            
+            // Criar um novo botão de confirmação para o modal
+            let confirmDeleteBtn = document.getElementById('confirmDeleteModalBtn');
+            if (!confirmDeleteBtn) {
+                confirmDeleteBtn = document.createElement('button');
+                confirmDeleteBtn.id = 'confirmDeleteModalBtn';
+                confirmDeleteBtn.className = 'modal-close-button bg-red-500 hover:bg-red-600 ml-3'; // Estilo para o botão de apagar
+                confirmDeleteBtn.textContent = 'Apagar Histórico';
+                modalCloseBtn.parentNode.insertBefore(confirmDeleteBtn, modalCloseBtn.nextSibling);
+            } else {
+                confirmDeleteBtn.style.display = 'inline-block';
+            }
+            
+            const handleConfirm = async () => {
+                closeModal(); 
+                confirmDeleteBtn.style.display = 'none'; // Esconder o botão de confirmação
+                modalCloseBtn.textContent = 'OK'; // Restaurar texto do botão OK
+                modalCloseBtn.onclick = originalModalCloseBtnHandler; // Restaurar handler original
+                window.removeEventListener('click', handleOutsideClickForConfirm);
+
 
                 showModal("A apagar histórico do banco de dados...", true, 4000); 
-
                 const historicoCollectionRef = collection(db, `apps/${NOME_DA_APP_PARA_COLECAO}/usuarios/${userId}/tapetesCalculados`);
                 try {
                     const querySnapshot = await getDocs(historicoCollectionRef);
@@ -593,33 +647,54 @@
                             historicoLocal = [];
                             exibirHistorico();
                         }
+                        // Limpar campos da calculadora após limpar histórico
+                        nomeClienteInput.value = '';
+                        valorMetroInput.value = '';
+                        diametroInput.value = '';
+                        comprimentoInput.value = '';
+                        larguraInput.value = '';
+                        resultadoCalculoAtualDiv.innerHTML = `<p class="text-sm text-slate-300">O resultado do cálculo atual aparecerá aqui.</p>`;
                         return;
                     }
-
                     const batch = writeBatch(db);
                     querySnapshot.forEach(doc => {
                         batch.delete(doc.ref);
                     });
                     await batch.commit();
-                    
                     console.log("Histórico apagado do Firestore com sucesso.");
                     showModal("Histórico apagado do banco de dados com sucesso!"); 
-
+                    // Limpar campos da calculadora após limpar histórico
+                    nomeClienteInput.value = '';
+                    valorMetroInput.value = '';
+                    diametroInput.value = '';
+                    comprimentoInput.value = '';
+                    larguraInput.value = '';
+                    resultadoCalculoAtualDiv.innerHTML = `<p class="text-sm text-slate-300">O resultado do cálculo atual aparecerá aqui.</p>`;
                 } catch (error) {
                     console.error("Erro ao limpar histórico do Firestore: ", error);
                     showModal("Erro ao limpar histórico do banco de dados: " + error.message);
                 }
             };
 
-            // Se o utilizador fechar o modal clicando fora (sem ser no botão OK)
-            const tempWindowClickHandler = (event) => {
-                if (event.target == messageModal) {
-                    modalCloseBtn.onclick = originalModalCloseBtnHandler; // Restaurar handler
-                    window.removeEventListener('click', tempWindowClickHandler); // Remover este handler temporário
-                    showModal("Operação de limpeza do histórico cancelada.", true, 2000);
+            confirmDeleteBtn.onclick = handleConfirm;
+
+            const handleCancel = () => {
+                closeModal();
+                confirmDeleteBtn.style.display = 'none';
+                modalCloseBtn.textContent = 'OK';
+                modalCloseBtn.onclick = originalModalCloseBtnHandler;
+                window.removeEventListener('click', handleOutsideClickForConfirm);
+                showModal("Operação de limpeza do histórico cancelada.", true, 2000);
+            };
+            
+            modalCloseBtn.onclick = handleCancel; // Botão OK agora é Cancelar
+
+            const handleOutsideClickForConfirm = (event) => {
+                if (event.target == messageModal) { // Se clicar fora do conteúdo do modal
+                    handleCancel();
                 }
             };
-            window.addEventListener('click', tempWindowClickHandler);
+            window.addEventListener('click', handleOutsideClickForConfirm);
 
         });
 
@@ -629,7 +704,7 @@
                 return;
             }
             let csvContent = "data:text/csv;charset=utf-8,";
-            const headers = ["Data/Hora", "Formato", "Medidas", "Área (m²)", "Valor m² (R$)", "Preço Total (R$)"];
+            const headers = ["Data/Hora", "Nome do Cliente", "Formato", "Medidas", "Área (m²)", "Valor m² (R$)", "Preço Total (R$)"];
             csvContent += headers.join(";") + "\r\n";
             const historicoOrdenado = [...historicoLocal].sort((a, b) => {
                  const timeA = a.timestamp?.toDate ? a.timestamp.toDate().getTime() : (a.timestamp || 0);
@@ -639,6 +714,7 @@
             historicoOrdenado.forEach(item => {
                 const linha = [
                     `"${formatFirebaseTimestamp(item.timestamp)}"`, 
+                    `"${escapeHTML(item.nomeCliente) || ''}"`, 
                     item.formato, 
                     `"${item.dimensoesTexto}"`,
                     formatNumber(item.area).replace('.',','), 
@@ -648,11 +724,11 @@
                 csvContent += linha.join(";") + "\r\n";
             });
             csvContent += "\r\n";
-            csvContent += `;;TOTAL TAPETES:;${historicoLocal.length}\r\n`;
+            csvContent += `;;;TOTAL TAPETES:;${historicoLocal.length}\r\n`; 
             const totalArea = historicoLocal.reduce((sum, item) => sum + item.area, 0);
-            csvContent += `;;TOTAL ÁREA (m²):;${formatNumber(totalArea).replace('.',',')}\r\n`;
+            csvContent += `;;;TOTAL ÁREA (m²):;${formatNumber(totalArea).replace('.',',')}\r\n`;
             const totalPreco = historicoLocal.reduce((sum, item) => sum + item.precoTotal, 0);
-            csvContent += `;;TOTAL PREÇO (R$):;${formatNumber(totalPreco).replace('.',',')}\r\n`;
+            csvContent += `;;;TOTAL PREÇO (R$):;${formatNumber(totalPreco).replace('.',',')}\r\n`;
             const encodedUri = encodeURI(csvContent);
             const link = document.createElement("a");
             link.setAttribute("href", encodedUri);
@@ -674,14 +750,10 @@
                 showModal("Não há histórico para exportar como imagem.");
                 return;
             }
-
             showModal("A gerar imagem do relatório...", true, 2000); 
-
             const displayOriginalBotoes = botoesAcaoRelatorioDiv.style.display;
             botoesAcaoRelatorioDiv.style.display = 'none';
-            
             await new Promise(resolve => setTimeout(resolve, 100));
-
             const options = {
                 scale: 2, 
                 useCORS: true, 
@@ -692,7 +764,6 @@
                 windowWidth: relatorioVisualParaImagemDiv.scrollWidth, 
                 windowHeight: relatorioVisualParaImagemDiv.scrollHeight 
             };
-
             try {
                 const canvas = await html2canvas(relatorioVisualParaImagemDiv, options);
                 const imageURL = canvas.toDataURL("image/png");
